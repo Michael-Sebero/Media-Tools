@@ -1,0 +1,122 @@
+#!/bin/bash
+
+commands=(
+    "Change Volume"
+    "Compare Audio"
+    "Convert to Opus"
+    "Generate Album Sections"
+    "Lossless Separator"
+    "Mass Crop Images"
+    "Mass Thumbnail"
+    "Remove Audio"
+    "Rotate Video"
+    "Scale Image"
+    "Sort by Album"
+    "Sort by Artist"
+    "Sort by Genre"
+    "Sort by Resolution"
+    "View Metadata"
+    "Quit"
+)
+
+selected=0
+
+# Function to display the list and highlight the selected item
+display_list() {
+    clear
+    echo -e "\033[1m  Media Tools\033[0m\n  -----------"
+    for i in "${!commands[@]}"; do
+        if [ $i -eq $selected ]; then
+            echo -e "\033[1m➤ ${commands[$i]}\033[0m\n"
+        else
+            echo -e "  ${commands[$i]}\n"
+        fi
+    done
+}
+
+# Function to execute the selected command
+execute_command() {
+    case ${commands[$selected]} in
+        "Change Volume") 
+            python3 ~/Media-Tools/tools/change-volume.py
+            read -p "Press Enter to return to the menu..."
+            ;;
+        "Compare Audio") 
+            python3 ~/Media-Tools/tools/compare-audio.py
+            read -p "Press Enter to return to the menu..."
+            ;;
+        "Convert to Opus") 
+            python3 ~/Media-Tools/tools/convert-to-opus.py
+            read -p "Press Enter to return to the menu..."
+            ;;
+        "Generate Album Sections") 
+            python3 ~/Media-Tools/tools/generate-album-sections.py
+            read -p "Press Enter to return to the menu..."
+            ;;            
+        "Lossless Separator") 
+            python3 ~/Media-Tools/tools/lossless-separator.py
+            read -p "Press Enter to return to the menu..."
+            ;;            
+        "Mass Crop Images") 
+            python3 ~/Media-Tools/tools/mass-crop-images.py
+            read -p "Press Enter to return to the menu..."
+            ;;
+        "Mass Thumbnail") 
+            python3 ~/Media-Tools/tools/mass-thumbnail.py
+            read -p "Press Enter to return to the menu..."
+            ;;
+        "Remove Audio")
+            python3 ~/Media-Tools/tools/remove-audio.py
+            read -p "Press Enter to return to the menu..."
+            ;;        
+        "Rotate Video")
+            python3 ~/Media-Tools/tools/rotate-video.py
+            read -p "Press Enter to return to the menu..."
+            ;;              
+        "Scale Image")
+            python3 ~/Media-Tools/tools/scale-image.py
+            read -p "Press Enter to return to the menu..."
+            ;;            
+        "Sort by Album") 
+            python3 ~/Media-Tools/tools/sort-by-album.py
+            read -p "Press Enter to return to the menu..."
+            ;;                          
+        "Sort by Artist") 
+            python3 ~/Media-Tools/tools/sort-by-artist.py
+            read -p "Press Enter to return to the menu..."
+            ;;  
+        "Sort by Genre")
+            python3 ~/Media-Tools/tools/sort-by-genre.py
+            read -p "Press Enter to return to the menu..."
+            ;;        
+        "Sort by Resolution")
+            python3 ~/Media-Tools/tools/sort-by-resolution.py
+            read -p "Press Enter to return to the menu..."
+            ;;           
+        "View Metadata") 
+            python3 ~/Media-Tools/tools/view-metadata.py
+            read -p "Press Enter to return to the menu..."
+            ;;
+        "Quit") 
+            echo -e "\n\033[1mExiting script\033[0m"
+            exit 0
+            ;;
+        *) 
+            echo -e "\nInvalid selection"
+            ;;
+    esac
+}
+
+# Main loop
+while true; do
+    display_list
+
+    read -sn 1 key
+
+    case $key in
+        "A") ((selected--)); [ $selected -lt 0 ] && selected=$(( ${#commands[@]} - 1 ));;
+        "B") ((selected++)); [ $selected -ge ${#commands[@]} ] && selected=0 ;;
+        "") execute_command ;;
+        *) ;;
+    esac
+done
