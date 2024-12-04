@@ -6,7 +6,7 @@
 ```
 pip install matplotlib librosa audioread pydub futures mutagen pillow eyed3 tinytag moviepy
 
-git clone https://github.com/michaelsebero/Media-Tools
+git clone https://github.com/MichaelSebero/Media-Tools
 
 sh /home/$USER/Media-Tools/media-tools
 ```
