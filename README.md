@@ -41,6 +41,9 @@ This script removes audio from video files in a given directory.
 ## Rotate Video
 This script rotates a video by 90, 180 or 270 degrees depending on the user's choice.
 
+## Sample Rate Detector
+This script detects the sample rate of audio which is playing.
+
 ## Scale Image
 This script scales an image to any given dimension.
 

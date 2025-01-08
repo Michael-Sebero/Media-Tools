@@ -73,6 +73,10 @@ execute_command() {
             python3 ~/Media-Tools/tools/rotate-video.py
             read -p "Press Enter to return to the menu..."
             ;;              
+        "Sample Rate Detector")
+            python3 ~/Media-Tools/tools/sample-rate-detector-py
+            read -p "Press Enter to return to the menu..."
+            ;;                 
         "Scale Image")
             python3 ~/Media-Tools/tools/scale-image.py
             read -p "Press Enter to return to the menu..."
