@@ -9,6 +9,7 @@ commands=(
     "Mass Crop Images"
     "Mass Thumbnail"
     "Remove Audio"
+    "Remove Metadata"
     "Rotate Video"
     "Scale Image"
     "Sort by Album"
@@ -69,6 +70,10 @@ execute_command() {
             python3 ~/Media-Tools/tools/remove-audio.py
             read -p "Press Enter to return to the menu..."
             ;;        
+        "Remove Metadata")
+            python3 ~/Media-Tools/tools/remove-metadata.py
+            read -p "Press Enter to return to the menu..."
+            ;;               
         "Rotate Video")
             python3 ~/Media-Tools/tools/rotate-video.py
             read -p "Press Enter to return to the menu..."

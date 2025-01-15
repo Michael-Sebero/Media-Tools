@@ -38,6 +38,9 @@ This script adds thumbnails of the user's choice to `.flac` and `.mp3` files in 
 ## Remove Audio
 This script removes audio from video files in a given directory.
 
+## Remove Audio
+This script removes metadata from video files in a given directory.
+
 ## Rotate Video
 This script rotates a video by 90, 180 or 270 degrees depending on the user's choice.
 
@@ -51,7 +54,7 @@ This script scales an image to any given dimension.
 This script organizes songs within a specified directory by creating folders named after their album metadata.
 
 ## Sort by Artist
-This script organizes songs within a specified directory by creating folders named after their artist and album metadata, `sort-by-artist-r` does this recursively.
+This script organizes songs within a specified directory by creating folders named after their artist and album metadata.
 
 ## Sort by Genre
 This script organizes songs by their genre, artist and albums associated with the artist.
@@ -60,4 +63,4 @@ This script organizes songs by their genre, artist and albums associated with th
 This script organizes media based off their resolution.
 
 ## View Metadata
-The script `view-metadata` displays metadata associated with media files.
+This script displays metadata associated with media files.
