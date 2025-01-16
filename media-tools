@@ -53,11 +53,11 @@ execute_command() {
         "Generate Album Sections") 
             python3 ~/Media-Tools/tools/generate-album-sections.py
             read -p "Press Enter to return to the menu..."
-            ;;            
+            ;;
         "Lossless Separator") 
             python3 ~/Media-Tools/tools/lossless-separator.py
             read -p "Press Enter to return to the menu..."
-            ;;            
+            ;;
         "Mass Crop Images") 
             python3 ~/Media-Tools/tools/mass-crop-images.py
             read -p "Press Enter to return to the menu..."
@@ -69,39 +69,35 @@ execute_command() {
         "Remove Audio")
             python3 ~/Media-Tools/tools/remove-audio.py
             read -p "Press Enter to return to the menu..."
-            ;;        
+            ;;
         "Remove Metadata")
             python3 ~/Media-Tools/tools/remove-metadata.py
             read -p "Press Enter to return to the menu..."
-            ;;               
+            ;;
         "Rotate Video")
             python3 ~/Media-Tools/tools/rotate-video.py
             read -p "Press Enter to return to the menu..."
-            ;;              
-        "Sample Rate Detector")
-            python3 ~/Media-Tools/tools/sample-rate-detector-py
-            read -p "Press Enter to return to the menu..."
-            ;;                 
+            ;;
         "Scale Image")
             python3 ~/Media-Tools/tools/scale-image.py
             read -p "Press Enter to return to the menu..."
-            ;;            
+            ;;
         "Sort by Album") 
             python3 ~/Media-Tools/tools/sort-by-album.py
             read -p "Press Enter to return to the menu..."
-            ;;                          
+            ;;
         "Sort by Artist") 
             python3 ~/Media-Tools/tools/sort-by-artist.py
             read -p "Press Enter to return to the menu..."
-            ;;  
+            ;;
         "Sort by Genre")
             python3 ~/Media-Tools/tools/sort-by-genre.py
             read -p "Press Enter to return to the menu..."
-            ;;        
+            ;;
         "Sort by Resolution")
             python3 ~/Media-Tools/tools/sort-by-resolution.py
             read -p "Press Enter to return to the menu..."
-            ;;           
+            ;;
         "View Metadata") 
             python3 ~/Media-Tools/tools/view-metadata.py
             read -p "Press Enter to return to the menu..."
