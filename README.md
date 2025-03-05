@@ -17,6 +17,7 @@ This script compares two audio files using a spectrogram during the first 8 minu
 <p align="left">
     <img src="https://i.postimg.cc/4dgNCq02/comparison.png" style="width:50%; height:auto;" />
 </p>
+
 ## Change Volume
 This script changes the volume of audio files in a given directory to in a seperate folder.
 
