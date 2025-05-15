@@ -41,7 +41,7 @@ class MP4Rotator(VideoRotator):
             with open(self.output_file, 'r+b') as f:
                 self._process_atoms(f, degrees)
                 
-            print(f"Successfully rotated: {Path(self.input_file).name}")
+            # Success is reported by the calling function, don't print here
             return True
         except Exception as e:
             print(f"Error rotating video: {str(e)}")
@@ -295,7 +295,7 @@ class FFMpegRotator(VideoRotator):
             )
             
             if process.returncode == 0:
-                print(f"Successfully rotated: {Path(self.input_file).name}")
+                # Success is reported by the calling function, don't print here
                 return True
             else:
                 print(f"FFmpeg error: {process.stderr}")
@@ -315,6 +315,7 @@ class CopyRotator(VideoRotator):
         try:
             shutil.copy2(self.input_file, self.output_file)
             print(f"Note: {Path(self.input_file).name} copied but not rotated.")
+            # Don't add "Successfully rotated" message as it's misleading
             return True
         except Exception as e:
             print(f"Error copying video: {str(e)}")
