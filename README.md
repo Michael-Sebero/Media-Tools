@@ -8,7 +8,7 @@ pip install matplotlib librosa audioread pydub futures mutagen pillow eyed3 tiny
 
 git clone https://github.com/Michael-Sebero/Media-Tools
 
-sh /home/$USER/Media-Tools/media-tools
+python3 /home/$USER/Media-Tools/media-tools.py
 ```
 
 ## Compare Audio
