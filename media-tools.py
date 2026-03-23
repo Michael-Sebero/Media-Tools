@@ -1086,11 +1086,36 @@ class RecoverDate:
 
     # ── individual strategies ─────────────────────────────────────────────────
 
+    def _read_exif_tagged(self, img) -> dict:
+        """
+        Read EXIF tags from a PIL Image using the best available API.
+        img.getexif()  — Pillow 6+, works for JPEG, PNG, TIFF, HEIF, WebP.
+        img._getexif() — legacy JPEG-only shim; raises AttributeError on PNG.
+        We try getexif() first so PNG images are not silently skipped.
+        """
+        if not HAS_EXIF_TAGS:
+            return {}
+        # Modern API (Pillow 6+) — works for all formats including PNG
+        if hasattr(img, 'getexif'):
+            try:
+                exif_obj = img.getexif()
+                if exif_obj:
+                    return {EXIF_TAGS.get(k, k): v for k, v in exif_obj.items()}
+            except Exception:
+                pass
+        # Legacy JPEG-only fallback
+        if hasattr(img, '_getexif'):
+            try:
+                raw = img._getexif() or {}
+                return {EXIF_TAGS.get(k, k): v for k, v in raw.items()}
+            except Exception:
+                pass
+        return {}
+
     def _exif(self, path: Path) -> Tuple[Optional[datetime], Optional[str], Optional[str]]:
         try:
             img = Image.open(path)
-            raw = img._getexif() or {}
-            tagged = {EXIF_TAGS.get(k, k): v for k, v in raw.items()} if HAS_EXIF_TAGS else {}
+            tagged = self._read_exif_tagged(img)
             dt = None
             for field in ("DateTimeOriginal", "DateTimeDigitized", "DateTime"):
                 rv = tagged.get(field)
@@ -1107,19 +1132,27 @@ class RecoverDate:
     def _thumbnail_exif(self, path: Path) -> Optional[datetime]:
         try:
             img = Image.open(path)
-            exif_raw = img.info.get("exif", b"")
-            thumb_start = exif_raw.find(b'\xff\xd8', 6)
-            if thumb_start == -1:
-                return None
-            thumb = Image.open(io.BytesIO(exif_raw[thumb_start:]))
-            raw = thumb._getexif() or {}
-            tagged = {EXIF_TAGS.get(k, k): v for k, v in raw.items()} if HAS_EXIF_TAGS else {}
+            # getexif() covers PNG embedded EXIF directly — no need to dig for a thumbnail
+            tagged = self._read_exif_tagged(img)
             for field in ("DateTimeOriginal", "DateTimeDigitized", "DateTime"):
                 rv = tagged.get(field)
                 if rv:
                     dt = self._sane(self._parse_dt(str(rv)))
                     if dt:
                         return dt
+            # Also check for a JPEG thumbnail embedded inside a raw EXIF blob
+            exif_raw = img.info.get("exif", b"")
+            if isinstance(exif_raw, bytes):
+                thumb_start = exif_raw.find(b'\xff\xd8', 6)
+                if thumb_start != -1:
+                    thumb = Image.open(io.BytesIO(exif_raw[thumb_start:]))
+                    tagged2 = self._read_exif_tagged(thumb)
+                    for field in ("DateTimeOriginal", "DateTimeDigitized", "DateTime"):
+                        rv = tagged2.get(field)
+                        if rv:
+                            dt = self._sane(self._parse_dt(str(rv)))
+                            if dt:
+                                return dt
         except Exception:
             pass
         return None
@@ -1493,8 +1526,13 @@ class RecoverDate:
                 result = self.resolve(path)
                 prefix = result.prefix()
 
-                # Skip if already prefixed with this date
-                if path.stem.startswith(prefix):
+                # Skip if the file already carries a date prefix (MM-DD-YYYY or 00-00-YYYY).
+                # Match on the pattern rather than the computed prefix so a file that was
+                # previously given a year-only prefix isn't re-skipped when we now know
+                # the full date, and so PNG files with names starting with digits aren't
+                # wrongly skipped.
+                already_dated = re.match(r'^\d{2}-\d{2}-\d{4}_', path.name)
+                if already_dated:
                     print(f"SKIP {path.name} (already dated)")
                     self.stats['skipped'] += 1
                     continue
