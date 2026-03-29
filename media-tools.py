@@ -449,37 +449,125 @@ def convert_opus(files: List[Path], lossless: bool, output: Path):
 # ============================================================================
 
 def split_lossless_album(filepath: Path):
+    # Accept a directory — auto-detect the lossless file inside it
+    if filepath.is_dir():
+        candidates = FileScanner.scan(filepath, MediaExtensions.LOSSLESS_AUDIO)
+        if not candidates:
+            print(f"No lossless audio file found in: {filepath}")
+            return
+        if len(candidates) > 1:
+            print("Multiple lossless files found — please specify the file directly:")
+            for c in candidates:
+                print(f"  {c}")
+            return
+        filepath = candidates[0]
+
     base_name = filepath.stem
-    cue_file = filepath.parent / f"{base_name}.cue"
-    
+    directory = filepath.parent
+
+    # 1. Exact stem match: E.flac → E.cue
+    cue_file = directory / f"{base_name}.cue"
+
+    # 2. Fallback: any single .cue file in the same directory
     if not cue_file.exists():
-        print(f"No CUE file found: {cue_file.name}")
+        cue_candidates = list(directory.glob("*.cue"))
+        if len(cue_candidates) == 1:
+            cue_file = cue_candidates[0]
+        elif len(cue_candidates) > 1:
+            print(f"Multiple CUE files found in {directory} — please rename one to match {base_name}.cue")
+            return
+
+    if not cue_file.exists():
+        print(f"No CUE file found: {base_name}.cue")
         return
     
     output_dir = filepath.parent / base_name
     output_dir.mkdir(exist_ok=True)
-    
+
     print(f"Splitting {filepath.name} using {cue_file.name}...")
-    
-    try:
-        # Try using shnsplit
-        result = subprocess.run(
-            ['shnsplit', '-f', str(cue_file), '-o', 'flac', '-t', '%n - %t',
-             '-d', str(output_dir), str(filepath)],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-        
-        if result.returncode == 0:
-            print(f"OK Split {filepath.name} successfully")
-            print(f"Output: {output_dir}")
+
+    tracks = _parse_cue(cue_file)
+    if not tracks:
+        print("ERR Could not parse any tracks from CUE file.")
+        return
+
+    ok, fail = 0, 0
+    for i, track in enumerate(tracks):
+        num    = track['number']
+        title  = PathUtils.sanitize_filename(track.get('title', f'Track {num}'))
+        start  = track['start']
+        end    = tracks[i + 1]['start'] if i + 1 < len(tracks) else None
+        ext    = filepath.suffix.lower()
+        out    = output_dir / f"{num:02d} - {title}{ext}"
+
+        # Input-side -ss: ffmpeg seeks before opening the file, so output
+        # timestamps start at 0 instead of retaining the album position.
+        # Use -t (duration) instead of -to (absolute end) for the same reason.
+        duration = (end - start) if end is not None else None
+        cmd = ['ffmpeg', '-y', '-ss', str(start), '-i', str(filepath)]
+        if duration is not None:
+            cmd += ['-t', str(duration)]
+        # Re-encode instead of stream-copy so ffmpeg writes a fresh STREAMINFO
+        # block with the correct total_samples for this segment. With -c copy the
+        # original album's sample count is preserved verbatim, making players show
+        # the full album duration regardless of actual content length.
+        # FLAC is lossless at any compression level; 0 is fastest.
+        if ext == '.flac':
+            cmd += ['-c:a', 'flac', '-compression_level', '0', str(out)]
+        elif ext == '.wav':
+            cmd += ['-c:a', 'pcm_s16le', str(out)]
         else:
-            print(f"ERR Failed to split")
-            print("Note: Install shntool and flac packages")
-    except FileNotFoundError:
-        print("Error: shnsplit not found")
-        print("Install: sudo pacman -S shntool flac")
-    except Exception as e:
-        print(f"ERR {e}")
+            # APE and others: transcode to FLAC (APE muxing in ffmpeg is unreliable)
+            out = out.with_suffix('.flac')
+            cmd += ['-c:a', 'flac', '-compression_level', '0', str(out)]
+
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            print(f"OK  {out.name}")
+            ok += 1
+        else:
+            print(f"ERR Track {num}: {result.stderr.decode(errors='replace').splitlines()[-1]}")
+            fail += 1
+
+    print(f"\nSplit: {ok} | Failed: {fail}")
+    print(f"Output: {output_dir}")
+
+
+def _parse_cue(cue_file: Path) -> List[Dict]:
+    """Parse a CUE sheet and return a list of track dicts with start times in seconds."""
+    tracks = []
+    current: Dict = {}
+
+    # CUE files are often latin-1 encoded
+    for encoding in ('utf-8-sig', 'latin-1'):
+        try:
+            text = cue_file.read_text(encoding=encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        return []
+
+    for line in text.splitlines():
+        line = line.strip()
+        if line.upper().startswith('TRACK '):
+            if 'number' in current:
+                tracks.append(current)
+            parts = line.split()
+            current = {'number': int(parts[1])}
+        elif line.upper().startswith('TITLE '):
+            title = re.sub(r'^TITLE\s+"?|"?$', '', line, flags=re.IGNORECASE).strip().strip('"')
+            current['title'] = title
+        elif line.upper().startswith('INDEX 01 '):
+            # Format: MM:SS:FF  (FF = frames, 75 per second)
+            timestamp = line.split()[-1]
+            mm, ss, ff = (int(x) for x in timestamp.split(':'))
+            current['start'] = mm * 60 + ss + ff / 75.0
+
+    if 'number' in current:
+        tracks.append(current)
+
+    return tracks
 
 
 # ============================================================================
@@ -574,21 +662,31 @@ def remove_metadata(files: List[Path]):
 # TOOL 12: ROTATE VIDEO
 # ============================================================================
 
-def rotate_videos(files: List[Path], degrees: int, output: Path):
+def rotate_videos(files: List[Path], mode: str, output: Path):
+    """mode: '1'=90°, '2'=180°, '3'=270°, '4'=mirror"""
     output.mkdir(exist_ok=True)
-    filters = {90: 'transpose=1', 180: 'hflip,vflip', 270: 'transpose=2'}
-    if degrees not in filters:
-        print("Invalid rotation")
+    vf_map = {
+        '1': ('transpose=1', '90°'),
+        '2': ('hflip,vflip', '180°'),
+        '3': ('transpose=2', '270°'),
+        '4': ('hflip',       'mirror'),
+    }
+    if mode not in vf_map:
+        print("Invalid choice")
         return
-    
+
+    vf, label = vf_map[mode]
+    prefix = 'mirrored' if mode == '4' else 'rotated'
     ok, fail = 0, 0
     for f in files:
         try:
-            out = output / f"rotated_{f.name}"
-            r = subprocess.run(['ffmpeg', '-i', str(f), '-vf', filters[degrees], '-c:a', 'copy', '-y', str(out)],
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out = output / f"{prefix}_{f.name}"
+            r = subprocess.run(
+                ['ffmpeg', '-i', str(f), '-vf', vf, '-c:a', 'copy', '-y', str(out)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             if r.returncode == 0:
-                print(f"OK {f.name} ({degrees} deg)")
+                print(f"OK {f.name} ({label})")
                 ok += 1
             else:
                 fail += 1
@@ -1659,9 +1757,14 @@ def run_command(cmd: str):
             d = PathUtils.get_valid_path("Directory: ")
             files = FileScanner.scan_video(d, False)
             if files:
-                deg = int(UserInput.choice("Rotation:", {'90': '90deg', '180': '180deg', '270': '270deg'}))
+                mode = UserInput.choice("Transform:", {
+                    '1': '90°  clockwise',
+                    '2': '180° flip',
+                    '3': '270° clockwise',
+                    '4': 'Mirror (horizontal)',
+                })
                 out = PathUtils.ensure_output_dir(d, "Rotated")
-                rotate_videos(files, deg, out)
+                rotate_videos(files, mode, out)
     
     elif cmd == "Sample Rate Detector":
         monitor_sample_rate()
